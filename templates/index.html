@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <style>
+        /* Basic Reset & Body Styling */
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
+
+        /* Game Container Styling */
+        .game-container {
+            text-align: center;
+            background: #161b22;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 2.5em;
+            color: #58a6ff;
+        }
+
+        /* Board Grid */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 10px;
+            margin-top: 25px;
+            justify-content: center;
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: #21262d;
+            border-radius: 8px;
+            border: 2px solid #30363d;
+            font-size: 2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        /* Hover & Click Animation */
+        .cell:hover {
+            background-color: #2d333b;
+            transform: scale(1.1);
+        }
+
+        .cell.x {
+            color: #ff7b72;
+            animation: fadeIn 0.3s;
+        }
+
+        .cell.o {
+            color: #79c0ff;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.7); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Message Area Styling */
+        #message {
+            margin-top: 20px;
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #58a6ff;
+            min-height: 30px;
+        }
+
+        /* Reset Button Styling */
+        #reset-button {
+            margin-top: 25px;
+            padding: 12px 24px;
+            background-color: #238636;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        #reset-button:hover {
+            background-color: #2ea043;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Tic-Tac-Toe</h1>
+        <div class="board" id="board"></div>
+        <div id="message"></div>
+        <button id="reset-button">New Game</button>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const message = document.getElementById('message');
+        const resetButton = document.getElementById('reset-button');
+        let gameBoard = Array(3).fill().map(() => Array(3).fill(" "));
+
+        function createBoard() {
+            board.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', handleCellClick);
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function updateBoard() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach((cell, index) => {
+                const row = Math.floor(index / 3);
+                const col = index % 3;
+                const value = gameBoard[row][col];
+
+                cell.textContent = value;
+                cell.classList.toggle('x', value === 'X');
+                cell.classList.toggle('o', value === 'O');
+            });
+        }
+
+        async function handleCellClick(event) {
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+
+            if (gameBoard[row][col] !== " ") return;
+
+            try {
+                const response = await fetch('/make_move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ board: gameBoard, row, col }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                gameBoard = data.board;
+                updateBoard();
+
+                if (data.game_over) {
+                    if (data.winner === 'human') {
+                        message.textContent = 'Congratulations! You win! 🎉';
+                    } else if (data.winner === 'computer') {
+                        message.textContent = 'The computer wins! 🤖';
+                    } else {
+                        message.textContent = "It's a tie! 🤝";
+                    }
+                    disableBoard();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                message.textContent = 'An error occurred. Please try again.';
+            }
+        }
+
+        function disableBoard() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => cell.removeEventListener('click', handleCellClick));
+        }
+
+        function resetGame() {
+            gameBoard = Array(3).fill().map(() => Array(3).fill(" "));
+            createBoard();
+            message.textContent = '';
+        }
+
+        resetButton.addEventListener('click', resetGame);
+
+        createBoard();
+    </script>
+</body>
+</html>
